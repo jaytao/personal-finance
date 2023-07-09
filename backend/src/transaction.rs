@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
+use serde::Serialize;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Transaction {
     pub source: Source,
     pub date: NaiveDate,
@@ -15,16 +16,17 @@ impl Transaction {
             date: date,
             amount: amount,
             description: description,
-            skip: false
+            skip: false,
         }
     }
 }
 
-#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Hash, Eq, PartialEq, Serialize)]
 pub enum Source {
     Chase,
     ChaseBank,
     BofA,
     Amex,
     Venmo,
+    Bilt,
 }

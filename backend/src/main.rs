@@ -7,7 +7,33 @@ use std::io::{BufReader, Read};
 mod transaction;
 use transaction::{Source, Transaction};
 mod csv_parsers;
-fn main() {
+
+#[macro_use] extern crate rocket;
+use rocket::serde::{json::Json};
+use rocket::State;
+
+struct AppState {
+    transactions: Vec<Transaction>
+}
+impl AppState {
+    fn new(transactions: Vec<Transaction>) -> AppState {
+        AppState {
+            transactions: transactions
+        }
+    }
+}
+#[get("/transactions")]
+fn index(app_state: &State<AppState>) -> Json<Vec<Transaction>>{
+    Json(app_state.transactions.clone())
+}
+
+#[launch]
+fn rocket() -> _ {
+    let transactions = read_statements();
+    rocket::build().mount("/", routes![index]).manage(AppState::new(transactions))
+}
+
+fn read_statements() -> Vec<Transaction>{
     let root_dir = "statements";
     let mut transactions: Vec<Transaction> = vec![];
     let mut per_source: HashMap<Source, f32> = HashMap::new();
@@ -25,6 +51,7 @@ fn main() {
             "chase-bank" => csv_parsers::parse_record_chase_bank,
             "amex" => csv_parsers::parse_record_amex,
             "venmo" => csv_parsers::parse_record_venmo,
+            "bilt" => csv_parsers::parse_record_bilt,
             _ => panic!("Found unknown source"),
         };
         if !entry.file_type().unwrap().is_dir() {
@@ -39,13 +66,16 @@ fn main() {
         }
     }
     transactions.sort_by(|a, b| a.date.cmp(&b.date));
-    for transaction in transactions {
+    for transaction in &transactions {
         *per_source.entry(transaction.source).or_insert(0.0) += transaction.amount;
         //if transaction.source == Source::BofA {
-        //    println!("{:?}", transaction);
+        //    println!("{:?}", transaction.amount);
         //}
     }
-    println!("{:?}",per_source);
+    for (key, value) in per_source.iter() {
+        println!("{:?}:\t\t{}", key, value);
+    }
+    transactions
 }
 
 fn parse_csv(path: &String, parser: fn(&StringRecord) -> Transaction) -> Vec<Transaction> {

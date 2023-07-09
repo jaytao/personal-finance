@@ -19,7 +19,7 @@ pub fn parse_record_chase(record: &StringRecord) -> Transaction {
 pub fn parse_record_chase_bank(record: &StringRecord) -> Transaction {
     let parse_from_str = NaiveDate::parse_from_str;
     let amount = str::parse(&record.get(3).unwrap().replace(",", "")).unwrap_or_else(|f| {
-        println!("Errored out on {}. {:?}", f,record);
+        println!("Errored out on {}. {:?}", f, record);
         0.0
     });
     Transaction::new(
@@ -33,7 +33,7 @@ pub fn parse_record_chase_bank(record: &StringRecord) -> Transaction {
 pub fn parse_record_bofa(record: &StringRecord) -> Transaction {
     let parse_from_str = NaiveDate::parse_from_str;
     let amount = str::parse(&record.get(2).unwrap().replace(",", "")).unwrap_or_else(|f| {
-        println!("Errored out on {}. {:?}", f,record);
+        println!("Errored out on {}. {:?}", f, record);
         0.0
     });
     Transaction::new(
@@ -47,7 +47,7 @@ pub fn parse_record_bofa(record: &StringRecord) -> Transaction {
 pub fn parse_record_amex(record: &StringRecord) -> Transaction {
     let parse_from_str = NaiveDate::parse_from_str;
     let amount = -str::parse(&record.get(2).unwrap().replace(",", "")).unwrap_or_else(|f| {
-        println!("Errored out on {}. {:?}", f,record);
+        println!("Errored out on {}. {:?}", f, record);
         0.0
     });
     Transaction::new(
@@ -58,18 +58,35 @@ pub fn parse_record_amex(record: &StringRecord) -> Transaction {
     )
 }
 
+pub fn parse_record_bilt(record: &StringRecord) -> Transaction {
+    let parse_from_str = NaiveDate::parse_from_str;
+    let amount = -str::parse(&record.get(8).unwrap().replace(",", "")).unwrap_or_else(|f| {
+        println!("Errored out on {}. {:?}", f, record);
+        0.0
+    });
 
+    Transaction::new(
+        Source::Bilt,
+        parse_from_str(record.get(3).unwrap(), "%Y-%m-%d").unwrap(),
+        amount,
+        record.get(1).unwrap().to_string(),
+    )
+}
 pub fn parse_record_venmo(record: &StringRecord) -> Transaction {
     let parse_from_str = NaiveDate::parse_from_str;
     let amount_split: Vec<&str> = record.get(8).unwrap().split(" ").collect();
+    let source = record.get(14).unwrap();
     let operator = match amount_split[0] {
         "+" => 1.0,
         "-" => -1.0,
-        _ => panic!("Found something wrong: {:?}", record)
+        _ => panic!("Found something wrong: {:?}", record),
     };
 
     let amount = &amount_split[1][1..].replace(",", "");
-    let amount_f = str::parse(amount).unwrap_or_else(|_| 0.0) * operator;
+    let amount_f = match source {
+        "Venmo balance" => str::parse(amount).unwrap_or_else(|_| 0.0) * operator,
+        _ => 0.0,
+    };
     Transaction::new(
         Source::Venmo,
         parse_from_str(record.get(2).unwrap(), "%Y-%m-%dT%H:%M:%S").unwrap(),
